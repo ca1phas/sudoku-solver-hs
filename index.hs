@@ -164,7 +164,7 @@ pruneSolve :: Grid -> [Grid]
 pruneSolve = filter valid . collapse . prune . choices
 
 -- REPEATED PRUNING
--- Large searhc space (except easy sudoku), will take a long time terminate in practice
+-- Large search space (except easy sudoku), will take a long time terminate in practice
 repeatedPruneSolve :: Grid -> [Grid]
 repeatedPruneSolve = filter valid . collapse . fix prune . choices
 
