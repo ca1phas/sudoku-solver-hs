@@ -13,7 +13,7 @@ type Grid = Matrix Value
 boxsize :: Int
 boxsize = 3
 
-values :: [Char]
+values :: String
 values = ['1' .. '9']
 
 empty :: Char -> Bool
@@ -128,8 +128,8 @@ valid g = all unique (rows g) && all unique (cols g) && all unique (boxes g)
 
 -- A BASIC SOLVER
 -- Very large search space, will not terminate in practice
-solve :: Grid -> [Grid]
-solve = filter valid . collapse . choices
+basicSolve :: Grid -> [Grid]
+basicSolve = filter valid . collapse . choices
 
 type Choices = [Value]
 
@@ -172,3 +172,40 @@ fix :: (Eq a) => (a -> a) -> a -> a
 fix f x = if x == x' then x else fix f x'
   where
     x' = f x
+
+-- PROPERTIES OF MATRICES
+complete :: Matrix Choices -> Bool
+complete = all (all single)
+
+safe :: Matrix Choices -> Bool
+safe m =
+  all consistent (rows m)
+    && all consistent (cols m)
+    && all consistent (boxes m)
+
+consistent :: Row Choices -> Bool
+consistent row = unique [cs | cs <- row, single cs]
+
+void :: Matrix Choices -> Bool
+void = any (any null)
+
+blocked :: Matrix Choices -> Bool
+blocked m = void m || not (safe m)
+
+-- EFFICIENT SOLVER
+solve :: Grid -> [Grid]
+solve = search . prune . choices
+
+search :: Matrix Choices -> [Grid]
+search m
+  | blocked m = []
+  | complete m = collapse m
+  | otherwise =
+      [g | m' <- expand m, g <- search (prune m')]
+
+expand :: Matrix Choices -> [Matrix Choices]
+expand m =
+  [rows1 ++ [row1 ++ [[c]] ++ row2] ++ rows2 | c <- cs]
+  where
+    (rows1, row : rows2) = span (all single) m
+    (row1, cs : row2) = span single row
