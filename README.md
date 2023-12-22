@@ -17,7 +17,7 @@ https://en.wikipedia.org/wiki/Sudoku
 3. Type `[method] [difficulty]` and press Enter.<br>
    `[method]` =<br>
    a. `solve` -> take less than 10 seconds to terminate<br>
-   b. `repeatedPruneSolver` -> takes a long time to terminate except `easy`<br>
-   c. `pruneSolver` -> takes a long time to terminate<br>
+   b. `repeatedPruneSolve` -> takes a long time to terminate except `easy`<br>
+   c. `pruneSolve` -> takes a long time to terminate<br>
    d. `basicSolve` -> takes forever to terminate<br>
    `[difficulty]` = `easy`/`gentle`/`diabolical`/`unsolvable`/`minimal`/`blank`
