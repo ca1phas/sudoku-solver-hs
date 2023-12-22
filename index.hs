@@ -1,13 +1,13 @@
 import Data.List
 
 -- DECLARATIONS
-type Value = Char
-
-type Row a = [a]
+type Grid = Matrix Value
 
 type Matrix a = [Row a]
 
-type Grid = Matrix Value
+type Row a = [a]
+
+type Value = Char
 
 -- DEFINITIONS
 boxsize :: Int
@@ -15,9 +15,6 @@ boxsize = 3
 
 values :: String
 values = ['1' .. '9']
-
-empty :: Char -> Bool
-empty = (== '.')
 
 single :: [a] -> Bool
 single [_] = True
@@ -107,8 +104,8 @@ rows = id
 cols :: Matrix a -> [Row a]
 cols = transpose
 
-boxes :: Matrix a -> [Row a]
-boxes = unpack . map cols . pack
+boxs :: Matrix a -> [Row a]
+boxs = unpack . map cols . pack
   where
     pack = split . map split
     split = chop boxsize
@@ -119,24 +116,24 @@ chop _ [] = []
 chop n xs = take n xs : chop n (drop n xs)
 
 -- VALIDITY CHECKING
+valid :: Grid -> Bool
+valid g = all unique (rows g) && all unique (cols g) && all unique (boxs g)
+
 unique :: (Eq a) => [a] -> Bool
 unique [] = True
 unique (x : xs) = x `notElem` xs && unique xs
 
-valid :: Grid -> Bool
-valid g = all unique (rows g) && all unique (cols g) && all unique (boxes g)
-
 -- A BASIC SOLVER
 -- Very large search space, will not terminate in practice
+type Choices = [Value]
+
 basicSolve :: Grid -> [Grid]
 basicSolve = filter valid . collapse . choices
-
-type Choices = [Value]
 
 choices :: Grid -> Matrix Choices
 choices = map (map choice)
   where
-    choice v = if v == '.' then ['1' .. '9'] else [v]
+    choice v = if v == '.' then values else [v]
 
 collapse :: Matrix [a] -> [Matrix a]
 collapse = cp . map cp
@@ -148,7 +145,7 @@ cp (xs : xss) = [y : ys | y <- xs, ys <- cp xss]
 -- PRUNING
 -- Large search space, will take a long time to terminate in practice
 prune :: Matrix Choices -> Matrix Choices
-prune = pruneBy boxes . pruneBy cols . pruneBy rows
+prune = pruneBy boxs . pruneBy cols . pruneBy rows
   where
     pruneBy f = f . map reduce . f
 
@@ -181,7 +178,7 @@ safe :: Matrix Choices -> Bool
 safe m =
   all consistent (rows m)
     && all consistent (cols m)
-    && all consistent (boxes m)
+    && all consistent (boxs m)
 
 consistent :: Row Choices -> Bool
 consistent row = unique [cs | cs <- row, single cs]
