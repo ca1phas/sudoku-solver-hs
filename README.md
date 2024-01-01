@@ -21,3 +21,7 @@ https://en.wikipedia.org/wiki/Sudoku
    c. `pruneSolve` -> takes a long time to terminate<br>
    d. `basicSolve` -> takes forever to terminate<br>
    `[difficulty]` = `easy`/`gentle`/`diabolical`/`unsolvable`/`minimal`/`blank`
+
+### Branches
+
+1. redo -> attempt to recreate the solver with minimal referencing
