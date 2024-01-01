@@ -1,12 +1,30 @@
--- DEFINITIONS
-type Grid = Matrix (Row Char)
+import Data.List
 
-type Matrix a = [a]
+-- DEFINITIONS
+boxsize :: Int
+boxsize = 2
+
+values :: [Char]
+values = ['1' .. '4']
+
+type Grid = Matrix Value
+
+type Matrix a = [Row a]
+
+type Value = Char
 
 type Row a = [a]
 
 -- EXAMPLE GRIDS
--- Solvable only using the basic rules
+-- 2x2
+test :: Grid
+test =
+  [ "1234",
+    "3412",
+    ".3.1",
+    ".1.3"
+  ]
+
 easy :: Grid
 easy =
   [ "2....1.38",
@@ -75,3 +93,43 @@ minimal =
     "5.1......",
     "...4...2."
   ]
+
+-- TRANSFORMATION
+rows :: Matrix a -> Matrix a
+rows = id
+
+cols :: Matrix a -> Matrix a
+cols = transpose
+
+boxs :: Matrix a -> Matrix a
+boxs = map concat . concatMap cols . split . map split
+  where
+    split [] = []
+    split row = take boxsize row : split (drop boxsize row)
+    group [] = []
+
+-- SOLVE
+type Choices = [Value]
+
+solve = prune . map choices
+
+choices :: Row Value -> Row Choices
+choices = map (\v -> if v == '.' then values else [v])
+
+prune :: Matrix Choices -> Matrix Choices
+prune = pruneBy boxs . pruneBy cols . pruneBy rows
+  where
+    pruneBy f = f . map filterChoices . f
+
+filterChoices :: Row Choices -> Row Choices
+filterChoices css =
+  map (\cs -> if length cs == 1 then cs else cs \\ singles css) css
+  where
+    singles = concat . filter single
+
+single :: [Value] -> Bool
+single [] = False
+single (_ : xs) = null xs
+
+complete :: Matrix Choices -> Bool
+complete = all (all single)
