@@ -1,5 +1,13 @@
+-- DEFINITIONS
+type Grid = Matrix (Row Char)
+
+type Matrix a = [a]
+
+type Row a = [a]
+
 -- EXAMPLE GRIDS
 -- Solvable only using the basic rules
+easy :: Grid
 easy =
   [ "2....1.38",
     "........5",
@@ -13,6 +21,7 @@ easy =
   ]
 
 -- First gentle example from sudoku.org.uk
+gentle :: Grid
 gentle =
   [ ".1.42...5",
     "..2.71.39",
@@ -26,6 +35,7 @@ gentle =
   ]
 
 -- First diabolical example
+diabolical :: Grid
 diabolical =
   [ ".9.7..86.",
     ".31..5.2.",
@@ -39,6 +49,7 @@ diabolical =
   ]
 
 -- First "unsolvable" (requires backtracking) example
+unsolvable :: Grid
 unsolvable =
   [ "1..9.7..3",
     ".8.....7.",
@@ -52,6 +63,7 @@ unsolvable =
   ]
 
 -- Minimal sized grid (17 values) with a unique solution
+minimal :: Grid
 minimal =
   [ ".98......",
     "....7....",
