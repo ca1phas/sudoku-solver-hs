@@ -2,10 +2,10 @@ import Data.List
 
 -- DEFINITIONS
 boxsize :: Int
-boxsize = 2
+boxsize = 3
 
 values :: [Char]
-values = ['1' .. '4']
+values = ['1' .. '9']
 
 type Grid = Matrix Value
 
@@ -111,10 +111,11 @@ boxs = map concat . concatMap cols . split . map split
 -- SOLVE
 type Choices = [Value]
 
-solve = prune . map choices
+solve :: Grid -> [Grid]
+solve = search . prune . map (map choices)
 
-choices :: Row Value -> Row Choices
-choices = map (\v -> if v == '.' then values else [v])
+choices :: Value -> Choices
+choices v = if v == '.' then values else [v]
 
 prune :: Matrix Choices -> Matrix Choices
 prune = pruneBy boxs . pruneBy cols . pruneBy rows
@@ -131,5 +132,36 @@ single :: [Value] -> Bool
 single [] = False
 single (_ : xs) = null xs
 
+search :: Matrix Choices -> [Grid]
+search m
+  | blocked m = []
+  | complete m = [map concat m]
+  | otherwise = [g | m' <- expand m, g <- search (prune m')]
+
+blocked :: Matrix Choices -> Bool
+blocked m = invalid m || not (safe m)
+
+invalid :: Matrix Choices -> Bool
+invalid = any (any null)
+
+safe :: Matrix Choices -> Bool
+safe m =
+  all consistent (rows m)
+    && all consistent (cols m)
+    && all consistent (boxs m)
+
+consistent :: Row Choices -> Bool
+consistent css = unique [cs | cs <- css, single cs]
+
+unique :: (Eq a) => [a] -> Bool
+unique [] = True
+unique (x : xs) = x `notElem` xs && unique xs
+
 complete :: Matrix Choices -> Bool
 complete = all (all single)
+
+expand :: Matrix Choices -> [Matrix Choices]
+expand m = [rows1 ++ [cs1 ++ [[c]] ++ cs2] ++ rows2 | c <- cs]
+  where
+    (rows1, row : rows2) = span (all single) m
+    (cs1, cs : cs2) = span single row
