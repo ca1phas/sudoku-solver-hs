@@ -1,208 +1,216 @@
 import Data.List
 
 -- DECLARATIONS
-type Grid = Matrix Value
+type Grid = [Group]
 
-type Matrix a = [Row a]
+type Group = [Int]
 
-type Row a = [a]
-
-type Value = Char
+type Domain = [Int]
 
 -- DEFINITIONS
 boxsize :: Int
 boxsize = 3
 
-values :: String
-values = ['1' .. '9']
+blank :: Int
+blank = 0
 
-single :: [a] -> Bool
-single [_] = True
-single _ = False
+maxDigit :: Int
+maxDigit = boxsize ^ 2
+
+domain0 :: Domain
+domain0 = [1 .. maxDigit]
 
 -- EXAMPLE GRIDS
 -- Solvable only using the basic rules
+easy' :: Grid
+easy' =
+  [ [2, 4, 9, 5, 7, 1, 6, 3, 8],
+    [8, 6, 1, 4, 3, 2, 9, 7, 5],
+    [5, 7, 3, 9, 8, 6, 1, 4, 2],
+    [7, 2, 5, 6, 9, 8, 4, 1, 3],
+    [6, 9, 8, 1, 4, 3, 2, 5, 7],
+    [3, 1, 4, 7, 2, 5, 8, 6, 9],
+    [9, 3, 7, 8, 1, 4, 5, 2, 6],
+    [1, 5, 2, 3, 6, 9, 7, 8, 4],
+    [4, 8, 6, 2, 5, 7, 3, 9, 1]
+  ]
+
+-- 249|571|638
+-- 861|432|975
+-- 573|986|142
+-- 725|698|413
+-- 698|143|257
+-- 314|725|869
+-- 937|814|526
+-- 152|369|784
+-- 486|257|391
+
+-- 285|763|914
+-- 467|291|358
+-- 913|584|726
+-- 549|617|832
+-- 738|942|165
+-- 126|835|497
+-- 691|428|573
+-- 374|156|289
+-- 852|379|641
+
+-- 285|467|913|549|738|126|691|374|852
+-- 763|291|584|617|942|835|428|156|379
+-- 914|358|726|832|165|497|573|289|641
+
+-- 285467913|549738126|691374852
+-- 763291584|617942835|428156379
+-- 914358726|832165497|573289641
+
 easy :: Grid
 easy =
-  [ "2....1.38",
-    "........5",
-    ".7...6...",
-    ".......13",
-    ".981..257",
-    "31....8..",
-    "9..8...2.",
-    ".5..69784",
-    "4..25...."
+  [ [2, 0, 0, 0, 0, 1, 0, 3, 8],
+    [0, 0, 0, 0, 0, 0, 0, 0, 5],
+    [0, 7, 0, 0, 0, 6, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 1, 3],
+    [0, 9, 8, 1, 0, 0, 2, 5, 7],
+    [3, 1, 0, 0, 0, 0, 8, 0, 0],
+    [9, 0, 0, 8, 0, 0, 0, 2, 0],
+    [0, 5, 0, 0, 6, 9, 7, 8, 4],
+    [4, 0, 0, 2, 5, 0, 0, 0, 0]
   ]
 
 -- First gentle example from sudoku.org.uk
 gentle :: Grid
 gentle =
-  [ ".1.42...5",
-    "..2.71.39",
-    ".......4.",
-    "2.71....6",
-    "....4....",
-    "6....74.3",
-    ".7.......",
-    "12.73.5..",
-    "3...82.7."
+  [ [0, 1, 0, 4, 2, 0, 0, 0, 5],
+    [0, 0, 2, 0, 7, 1, 0, 3, 9],
+    [0, 0, 0, 0, 0, 0, 0, 4, 0],
+    [2, 0, 7, 1, 0, 0, 0, 0, 6],
+    [0, 0, 0, 0, 4, 0, 0, 0, 0],
+    [6, 0, 0, 0, 0, 7, 4, 0, 3],
+    [0, 7, 0, 0, 0, 0, 0, 0, 0],
+    [1, 2, 0, 7, 3, 0, 5, 0, 0],
+    [3, 0, 0, 0, 8, 2, 0, 7, 0]
   ]
 
 -- First diabolical example
 diabolical :: Grid
 diabolical =
-  [ ".9.7..86.",
-    ".31..5.2.",
-    "8.6......",
-    "..7.5...6",
-    "...3.7...",
-    "5...1.7..",
-    "......1.9",
-    ".2.6..35.",
-    ".54..8.7."
+  [ [0, 9, 0, 7, 0, 0, 8, 6, 0],
+    [0, 3, 1, 0, 0, 5, 0, 2, 0],
+    [8, 0, 6, 0, 0, 0, 0, 0, 0],
+    [0, 0, 7, 0, 5, 0, 0, 0, 6],
+    [0, 0, 0, 3, 0, 7, 0, 0, 0],
+    [5, 0, 0, 0, 1, 0, 7, 0, 0],
+    [0, 0, 0, 0, 0, 0, 1, 0, 9],
+    [0, 2, 0, 6, 0, 0, 3, 5, 0],
+    [0, 5, 4, 0, 0, 8, 0, 7, 0]
   ]
 
 -- First "unsolvable" (requires backtracking) example
 unsolvable :: Grid
 unsolvable =
-  [ "1..9.7..3",
-    ".8.....7.",
-    "..9...6..",
-    "..72.94..",
-    "41.....95",
-    "..85.43..",
-    "..3...7..",
-    ".5.....4.",
-    "2..8.6..9"
+  [ [1, 0, 0, 9, 0, 7, 0, 0, 3],
+    [0, 8, 0, 0, 0, 0, 0, 7, 0],
+    [0, 0, 9, 0, 0, 0, 6, 0, 0],
+    [0, 0, 7, 2, 0, 9, 4, 0, 0],
+    [4, 1, 0, 0, 0, 0, 0, 9, 5],
+    [0, 0, 8, 5, 0, 4, 3, 0, 0],
+    [0, 0, 3, 0, 0, 0, 7, 0, 0],
+    [0, 5, 0, 0, 0, 0, 0, 4, 0],
+    [2, 0, 0, 8, 0, 6, 0, 0, 9]
   ]
 
 -- Minimal sized grid (17 values) with a unique solution
 minimal :: Grid
 minimal =
-  [ ".98......",
-    "....7....",
-    "....15...",
-    "1........",
-    "...2....9",
-    "...9.6.82",
-    ".......3.",
-    "5.1......",
-    "...4...2."
+  [ [0, 9, 8, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 7, 0, 0, 0, 0],
+    [0, 0, 0, 0, 1, 5, 0, 0, 0],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 2, 0, 0, 0, 0, 9],
+    [0, 0, 0, 9, 0, 6, 0, 8, 2],
+    [0, 0, 0, 0, 0, 0, 0, 3, 0],
+    [5, 0, 1, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 4, 0, 0, 0, 2, 0]
   ]
 
 -- Empty grid
-blank :: Grid
-blank = replicate n (replicate n '.')
-  where
-    n = boxsize ^ 2
+new :: Grid
+new = replicate maxDigit (replicate maxDigit blank)
 
 -- Rows, Columns, Boxes
-rows :: Matrix a -> [Row a]
+rows :: a -> a
 rows = id
 
-cols :: Matrix a -> [Row a]
+cols :: [[a]] -> [[a]]
 cols = transpose
 
-boxs :: Matrix a -> [Row a]
-boxs = unpack . map cols . pack
+boxs :: [[a]] -> [[a]]
+boxs = concat . cols . map (concatBy boxsize) . cols . map (chop boxsize)
   where
-    pack = split . map split
-    split = chop boxsize
-    unpack = map concat . concat
-
-chop :: Int -> [a] -> [[a]]
-chop _ [] = []
-chop n xs = take n xs : chop n (drop n xs)
+    chop _ [] = []
+    chop n xs = take n xs : chop n (drop n xs)
+    concatBy n [] = []
+    concatBy n xss = concat (take n xss) : concatBy n (drop n xss)
 
 -- VALIDITY CHECKING
-valid :: Grid -> Bool
-valid g = all unique (rows g) && all unique (cols g) && all unique (boxs g)
+valid' :: [Int] -> Bool
+valid' [] = True
+valid' (x : xs) = (x == blank || x `notElem` xs) && valid' xs
 
-unique :: (Eq a) => [a] -> Bool
-unique [] = True
-unique (x : xs) = x `notElem` xs && unique xs
+valid :: Grid -> Bool
+-- valid g = all valid' (rows g) && all valid' (cols g) && all valid' (boxs g)
+valid g = all valid' (rows g) && all valid' (cols g)
+
+complete' :: [Int] -> Bool
+complete' [] = True
+complete' (x : xs) = x /= blank && x <= maxDigit && x `notElem` xs && complete' xs
+
+complete :: Grid -> Bool
+-- complete g = all complete' rs && all complete' cs && all complete' bs
+complete g = all complete' rs && all complete' cs
+  where
+    rs = rows g
+    cs = cols g
+
+-- bs = boxs g
 
 -- A BASIC SOLVER
 -- Very large search space, will not terminate in practice
-type Choices = [Value]
-
-basicSolve :: Grid -> [Grid]
-basicSolve = filter valid . collapse . choices
-
-choices :: Grid -> Matrix Choices
-choices = map (map choice)
-  where
-    choice v = if v == '.' then values else [v]
-
-collapse :: Matrix [a] -> [Matrix a]
-collapse = cp . map cp
-
-cp :: [[a]] -> [[a]]
-cp [] = [[]]
-cp (xs : xss) = [y : ys | y <- xs, ys <- cp xss]
 
 -- PRUNING
 -- Large search space, will take a long time to terminate in practice
-prune :: Matrix Choices -> Matrix Choices
-prune = pruneBy boxs . pruneBy cols . pruneBy rows
+domain' :: Group -> [Domain]
+domain' = map (\c -> if c == blank then domain0 else [c])
+
+domains :: Grid -> [[Domain]]
+domains = map domain'
+
+dsslen :: [[Domain]] -> Int
+dsslen = length . concat . concat
+
+prune'' :: Domain -> [Domain] -> [Domain]
+prune'' _ [] = []
+prune'' vs (xs : ds) = xs' : prune'' vs' ds
   where
-    pruneBy f = f . map reduce . f
+    xs' = if length xs == 1 then xs else filter (`notElem` vs) xs
+    vs' = if length xs' == 1 then head xs' : vs else vs
 
-reduce :: Row Choices -> Row Choices
-reduce xss = [xs `minus` singles | xs <- xss]
+prune' :: Int -> [[Domain]] -> [[Domain]]
+prune' n dss =
+  let dss' = cols . boxs $ f (boxs $ f (cols $ f (rows dss)))
+      n' = dsslen dss'
+   in if n == n' then dss' else prune' n' dss'
   where
-    singles = concat (filter single xss)
+    f = map (\ds -> prune'' [head d | d <- ds, length d == 1] ds)
 
-minus :: Choices -> Choices -> Choices
-xs `minus` ys = if single xs then xs else xs \\ ys
+prune :: [[Domain]] -> [[Domain]]
+prune dss = prune' (dsslen dss) dss
 
-pruneSolve :: Grid -> [Grid]
-pruneSolve = filter valid . collapse . prune . choices
+solve :: Grid -> Grid
+solve = map concat . prune . domains
 
 -- REPEATED PRUNING
 -- Large search space (except easy sudoku), will take a long time terminate in practice
-repeatedPruneSolve :: Grid -> [Grid]
-repeatedPruneSolve = filter valid . collapse . fix prune . choices
-
-fix :: (Eq a) => (a -> a) -> a -> a
-fix f x = if x == x' then x else fix f x'
-  where
-    x' = f x
 
 -- PROPERTIES OF MATRICES
-complete :: Matrix Choices -> Bool
-complete = all (all single)
-
-safe :: Matrix Choices -> Bool
-safe m =
-  all consistent (rows m)
-    && all consistent (cols m)
-    && all consistent (boxs m)
-
-consistent :: Row Choices -> Bool
-consistent row = unique [cs | cs <- row, single cs]
-
-void :: Matrix Choices -> Bool
-void = any (any null)
-
-blocked :: Matrix Choices -> Bool
-blocked m = void m || not (safe m)
 
 -- EFFICIENT SOLVER
-solve :: Grid -> [Grid]
-solve = search . prune . choices
-
-search :: Matrix Choices -> [Grid]
-search m
-  | blocked m = []
-  | complete m = collapse m
-  | otherwise =
-      [g | m' <- expand m, g <- search (prune m')]
-
-expand :: Matrix Choices -> [Matrix Choices]
-expand m =
-  [rows1 ++ [row1 ++ [[c]] ++ row2] ++ rows2 | c <- cs]
-  where
-    (rows1, row : rows2) = span (all single) m
-    (row1, cs : row2) = span single row
