@@ -103,38 +103,35 @@ cols :: [[a]] -> [[a]]
 cols = transpose
 
 boxs :: [[a]] -> [[a]]
-boxs = concat . cols . map (concatBy boxsize) . cols . map (chop boxsize)
+boxs = concat . cols . map gather . cols . map chop
   where
-    chop _ [] = []
-    chop n xs = take n xs : chop n (drop n xs)
-    concatBy n [] = []
-    concatBy n xss = concat (take n xss) : concatBy n (drop n xss)
+    chop [] = []
+    chop xs = take boxsize xs : chop (drop boxsize xs)
+    gather [] = []
+    gather xss = concat (take boxsize xss) : gather (drop boxsize xss)
 
 -- Get domains
 domains :: Grid -> [[Domain]]
 domains = map (map (\c -> if c == blank then domain0 else [c]))
 
--- Size of domain
+-- Get domains size
 dsslen :: [[Domain]] -> Int
 dsslen = length . concat . concat
 
 -- Prune domains
 prune'' :: Domain -> [Domain] -> [Domain]
 prune'' _ [] = []
-prune'' vs (d : ds) =
-  if null d'
-    then []
-    else d' : prune'' (if single d' then head d' : vs else vs) ds
+prune'' vs (d : ds) = if null d' then [] else d' : prune'' vs' ds
   where
     d' = if single d then d else filter (`notElem` vs) d
+    vs' = if single d' then head d' : vs else vs
 
 prune' :: Int -> [[Domain]] -> [[Domain]]
-prune' n dss =
-  let dss' = cols . boxs $ f (boxs $ f (cols $ f (rows dss)))
-      n' = dsslen dss'
-   in if n == n' then dss' else prune' n' dss'
+prune' n dss = if n == n' then dss' else prune' n' dss'
   where
-    f = map (\ds -> prune'' [head d | d <- ds, single d] ds)
+    pruneBy f = f . map (\ds -> prune'' [head d | d <- ds, single d] ds) . f
+    dss' = pruneBy boxs . pruneBy cols $ pruneBy rows dss
+    n' = dsslen dss'
 
 prune :: [[Domain]] -> [[Domain]]
 prune dss = prune' (dsslen dss) dss
