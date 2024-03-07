@@ -14,55 +14,18 @@ boxsize = 3
 blank :: Int
 blank = 0
 
-maxDigit :: Int
-maxDigit = boxsize ^ 2
+maxv :: Int
+maxv = boxsize ^ 2
 
 domain0 :: Domain
-domain0 = [1 .. maxDigit]
+domain0 = [1 .. maxv]
+
+single :: [a] -> Bool
+single [_] = True
+single _ = False
 
 -- EXAMPLE GRIDS
 -- Solvable only using the basic rules
-easy' :: Grid
-easy' =
-  [ [2, 4, 9, 5, 7, 1, 6, 3, 8],
-    [8, 6, 1, 4, 3, 2, 9, 7, 5],
-    [5, 7, 3, 9, 8, 6, 1, 4, 2],
-    [7, 2, 5, 6, 9, 8, 4, 1, 3],
-    [6, 9, 8, 1, 4, 3, 2, 5, 7],
-    [3, 1, 4, 7, 2, 5, 8, 6, 9],
-    [9, 3, 7, 8, 1, 4, 5, 2, 6],
-    [1, 5, 2, 3, 6, 9, 7, 8, 4],
-    [4, 8, 6, 2, 5, 7, 3, 9, 1]
-  ]
-
--- 249|571|638
--- 861|432|975
--- 573|986|142
--- 725|698|413
--- 698|143|257
--- 314|725|869
--- 937|814|526
--- 152|369|784
--- 486|257|391
-
--- 285|763|914
--- 467|291|358
--- 913|584|726
--- 549|617|832
--- 738|942|165
--- 126|835|497
--- 691|428|573
--- 374|156|289
--- 852|379|641
-
--- 285|467|913|549|738|126|691|374|852
--- 763|291|584|617|942|835|428|156|379
--- 914|358|726|832|165|497|573|289|641
-
--- 285467913|549738126|691374852
--- 763291584|617942835|428156379
--- 914358726|832165497|573289641
-
 easy :: Grid
 easy =
   [ [2, 0, 0, 0, 0, 1, 0, 3, 8],
@@ -132,10 +95,6 @@ minimal =
     [0, 0, 0, 4, 0, 0, 0, 2, 0]
   ]
 
--- Empty grid
-new :: Grid
-new = replicate maxDigit (replicate maxDigit blank)
-
 -- Rows, Columns, Boxes
 rows :: a -> a
 rows = id
@@ -151,48 +110,23 @@ boxs = concat . cols . map (concatBy boxsize) . cols . map (chop boxsize)
     concatBy n [] = []
     concatBy n xss = concat (take n xss) : concatBy n (drop n xss)
 
--- VALIDITY CHECKING
-valid' :: [Int] -> Bool
-valid' [] = True
-valid' (x : xs) = (x == blank || x `notElem` xs) && valid' xs
-
-valid :: Grid -> Bool
--- valid g = all valid' (rows g) && all valid' (cols g) && all valid' (boxs g)
-valid g = all valid' (rows g) && all valid' (cols g)
-
-complete' :: [Int] -> Bool
-complete' [] = True
-complete' (x : xs) = x /= blank && x <= maxDigit && x `notElem` xs && complete' xs
-
-complete :: Grid -> Bool
--- complete g = all complete' rs && all complete' cs && all complete' bs
-complete g = all complete' rs && all complete' cs
-  where
-    rs = rows g
-    cs = cols g
-
--- bs = boxs g
-
--- A BASIC SOLVER
--- Very large search space, will not terminate in practice
-
--- PRUNING
--- Large search space, will take a long time to terminate in practice
-domain' :: Group -> [Domain]
-domain' = map (\c -> if c == blank then domain0 else [c])
-
+-- Get domains
 domains :: Grid -> [[Domain]]
-domains = map domain'
+domains = map (map (\c -> if c == blank then domain0 else [c]))
 
+-- Size of domain
 dsslen :: [[Domain]] -> Int
 dsslen = length . concat . concat
 
+-- Prune domains
 prune'' :: Domain -> [Domain] -> [Domain]
 prune'' _ [] = []
-prune'' vs (xs : ds) = xs' : prune'' vs' ds
+prune'' vs (d : ds) =
+  if null d'
+    then []
+    else d' : prune'' (if single d' then head d' : vs else vs) ds
   where
-    xs' = if length xs == 1 then xs else filter (`notElem` vs) xs
-    vs' = if length xs' == 1 then head xs' : vs else vs
+    d' = if single d then d else filter (`notElem` vs) d
 
 prune' :: Int -> [[Domain]] -> [[Domain]]
 prune' n dss =
@@ -200,17 +134,72 @@ prune' n dss =
       n' = dsslen dss'
    in if n == n' then dss' else prune' n' dss'
   where
-    f = map (\ds -> prune'' [head d | d <- ds, length d == 1] ds)
+    f = map (\ds -> prune'' [head d | d <- ds, single d] ds)
 
 prune :: [[Domain]] -> [[Domain]]
 prune dss = prune' (dsslen dss) dss
 
-solve :: Grid -> Grid
-solve = map concat . prune . domains
+-- Select cell with the minimum remaining values
+selectCell'' :: Int -> [Domain] -> [(Int, Int)]
+selectCell'' m ds = [(j, n) | (j, d) <- zip [0 ..] ds, let n = length d, n > 1, n < m]
 
--- REPEATED PRUNING
--- Large search space (except easy sudoku), will take a long time terminate in practice
+selectCell' :: Int -> (Int, Int) -> Int -> [[Domain]] -> (Int, Int)
+selectCell' _ c _ [] = c
+selectCell' m c i (ds : dss) =
+  if null cs
+    then selectCell' m c (i + 1) dss
+    else let (j, n) = head cs in selectCell' n (i, j) (i + 1) dss
+  where
+    cs = selectCell'' m ds
 
--- PROPERTIES OF MATRICES
+selectCell :: [[Domain]] -> (Int, Int)
+selectCell = selectCell' maxvn1 (0, 0) 0
 
--- EFFICIENT SOLVER
+maxvn1 :: Int
+maxvn1 = maxv + 1
+
+-- Select value with the least constraining degree
+cdeg :: Int -> [Domain] -> Int
+cdeg v ds = length [1 | d <- ds, v `elem` d]
+
+sortValues :: [[Domain]] -> (Int, Int) -> [Int]
+sortValues dss (i, j) =
+  map snd (sortOn fst [(cdeg v ds, v) | v <- vs])
+  where
+    vs = dss !! i !! j
+    ds =
+      [ d
+        | (i', ds) <- zip [0 ..] dss,
+          (j', d) <- zip [0 ..] ds,
+          if i == i' then j /= j' else j == j'
+      ]
+
+-- Check if grid complete
+complete :: [[Domain]] -> Bool
+complete = all (all single)
+
+-- Check if grid valid
+valid' :: Domain -> [Domain] -> Bool
+valid' vs [] = null vs
+valid' vs ([v] : ds) = valid' (filter (/= v) vs) ds
+
+valid :: [[Domain]] -> Bool
+valid g = all (all (valid' domain0)) [rows g, cols g, boxs g]
+
+-- Solve grid
+update :: [[Domain]] -> (Int, Int) -> Domain -> [[Domain]]
+update dss (i, j) d =
+  let (ldss, ds : rdss) = splitAt i dss
+      (lds, _ : rds) = splitAt j ds
+   in ldss ++ ((lds ++ (d : rds)) : rdss)
+
+solve' :: [[Domain]] -> [Grid]
+solve' dss
+  | null dss = []
+  | complete dss = [map concat dss | valid dss]
+  | otherwise =
+      let c = selectCell dss
+       in [s | v <- sortValues dss c, s <- solve' (prune (update dss c [v]))]
+
+solve :: Grid -> [Grid]
+solve = solve' . prune . domains
